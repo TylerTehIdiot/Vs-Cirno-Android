@@ -1,143 +1,83 @@
 package;
 
-#if MODS_ALLOWED
-import sys.io.File;
-import sys.FileSystem;
-#end
-import lime.utils.Assets;
-import openfl.utils.Assets as OpenFlAssets;
-import haxe.Json;
-import haxe.format.JsonParser;
-
-using StringTools;
-
-typedef WeekFile =
-{
-	// JSON variables
-	var songs:Array<Dynamic>;
-	var weekCharacters:Array<String>;
-	var weekBackground:String;
-	var weekBefore:String;
-	var storyName:String;
-	var weekName:String;
-	var freeplayColor:Array<Int>;
-	var startUnlocked:Bool;
-	var hideStoryMode:Bool;
-	var hideFreeplay:Bool;
-	var showcutscene:Bool;
-	var currentcutscene:String;
-}
-
 class WeekData {
-	public static var weeksLoaded:Map<String, WeekData> = new Map<String, WeekData>();
-	public static var weeksList:Array<String> = [];
-	public var folder:String = '';
-	
-	// JSON variables
-	public var songs:Array<Dynamic>;
-	public var weekCharacters:Array<String>;
-	public var weekBackground:String;
-	public var weekBefore:String;
-	public var storyName:String;
-	public var weekName:String;
-	public var freeplayColor:Array<Int>;
-	public var startUnlocked:Bool;
-	public var hideStoryMode:Bool;
-	public var hideFreeplay:Bool;
-	public var showcutscene:Bool;
-	public var currentcutscene:String;
+	//Song names, used on both Story Mode and Freplay
+	//Go to FreeplayState.hx and add the head icons
+	//Go to StoryMenuState.hx and add the characters/backgrounds
+	public static var songsNames:Array<Dynamic> = [
+		['Tutorial'],								//Tutorial, this one isn't added to Freeplay, instead it is added from assets/preload/freeplaySonglist.txt
+	];
 
-	public static function createWeekFile():WeekFile {
-		var weekFile:WeekFile = {
-			songs: [["Bopeebo", "dad", [146, 113, 253], "Bopeebo"], ["Fresh", "dad", [146, 113, 253], "Fresh"], ["Dad Battle", "dad", [146, 113, 253], "Dad Battle"]], //Yeah, aparentemente o negocio tem que ser mais bonitin, MERDA!!!
-			weekCharacters: ['dad', 'bf', 'gf'],
-			weekBackground: 'stage',
-			weekBefore: 'tutorial',
-			storyName: 'Your New Week',
-			weekName: 'Custom Week',
-			freeplayColor: [146, 113, 253],
-			startUnlocked: true,
-			hideStoryMode: false,
-			hideFreeplay: false,
-			showcutscene: false,
-			currentcutscene: 'template'
-		};
-		return weekFile;
+	// Custom week number, used for your week's score not being overwritten by a new vanilla week when the game updates
+	// I'd recommend setting your week as -99 or something that new vanilla weeks will probably never ever use
+	// null = Don't change week number, it follows the vanilla weeks number order
+	public static var weekNumber:Array<Dynamic> = [
+		null,	//Tutorial
+		null,	//Week 1
+		null,	//Week 2
+		null,	//Week 3
+		null,	//Week 4
+		null,	//Week 5
+		null	//Week 6
+	];
+
+	//Tells which assets directory should it load
+	//Reminder that you have to add the directories on Project.xml too or they won't be compiled!!!
+	//Just copy week6/week6_high mentions and rename it to whatever your week will be named
+	//It ain't that hard, i guess
+
+	//Oh yeah, quick reminder that files inside the folder that ends with _high are only loaded
+	//if you have the Low Quality option disabled on "Preferences"
+	public static var loadDirectory:Array<String> = [
+		'tutorial', //Tutorial loads "tutorial" folder on assets/
+		null,	//Week 1
+		null,	//Week 2
+		null,	//Week 3
+		null,	//Week 4
+		null,	//Week 5
+		null	//Week 6
+	];
+
+	//The only use for this is to display a different name for the Week when you're on the score reset menu.
+	//Set it to null to make the Week be automatically called "Week (Number)"
+
+	//Edit: This now also messes with Discord Rich Presence, so it's kind of relevant.
+	public static var weekResetName:Array<String> = [
+		"Tutorial",
+		null,	//Week 1
+		null,	//Week 2
+		null,	//Week 3
+		null,	//Week 4
+		null,	//Week 5
+		null	//Week 6
+	];
+
+
+	//   FUNCTIONS YOU WILL PROBABLY NEVER NEED TO USE
+
+	//To use on PlayState.hx or Highscore stuff
+	public static function getCurrentWeekNumber():Int {
+		return getWeekNumber(PlayState.storyWeek);
 	}
 
-	// HELP: Is there any way to convert a WeekFile to WeekData without having to put all variables there manually? I'm kind of a noob in haxe lmao
-	public function new(weekFile:WeekFile) {
-		songs = weekFile.songs;
-		weekCharacters = weekFile.weekCharacters;
-		weekBackground = weekFile.weekBackground;
-		weekBefore = weekFile.weekBefore;
-		storyName = weekFile.storyName;
-		weekName = weekFile.weekName;
-		freeplayColor = weekFile.freeplayColor;
-		startUnlocked = weekFile.startUnlocked;
-		hideStoryMode = weekFile.hideStoryMode;
-		hideFreeplay = weekFile.hideFreeplay;
-		showcutscene = weekFile.showcutscene;
-		currentcutscene = weekFile.currentcutscene;
-	}
-
-	public static function reloadWeekFiles(isStoryMode:Null<Bool> = false)
-		{
-			weeksList = [];
-			weeksLoaded.clear();
-			var directories:Array<String> = [Paths.getPreloadPath()];
-			var originalLength:Int = directories.length;
-	
-			var sexList:Array<String> = CoolUtil.coolTextFile(Paths.getPreloadPath('weeks/weekList.txt'));
-			for (i in 0...sexList.length) {
-				for (j in 0...directories.length) {
-					var fileToCheck:String = directories[j] + 'weeks/' + sexList[i] + '.json';
-					if(!weeksLoaded.exists(sexList[i])) {
-						var week:WeekFile = getWeekFile(fileToCheck);
-						if(week != null) {
-							var weekFile:WeekData = new WeekData(week);
-	
-	
-							if(weekFile != null && (isStoryMode == null || (isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))) {
-								weeksLoaded.set(sexList[i], weekFile);
-								weeksList.push(sexList[i]);
-							}
-						}
-					}
-				}
+	public static function getWeekNumber(num:Int):Int {
+		var value:Int = 0;
+		if(num < weekNumber.length) {
+			value = num;
+			if(weekNumber[num] != null) {
+				value = weekNumber[num];
+				//trace('Cur value: ' + value);
 			}
-	
-
 		}
-	
-		private static function getWeekFile(path:String):WeekFile {
-			var rawJson:String = null;
-			if(OpenFlAssets.exists(path)) {
-				rawJson = Assets.getText(path);
-			}
-	
-			if(rawJson != null && rawJson.length > 0) {
-				return cast Json.parse(rawJson);
-			}
-			return null;
-		}
-	
-		//   FUNCTIONS YOU WILL PROBABLY NEVER NEED TO USE
-	
-		//To use on PlayState.hx or Highscore stuff
-	public static function getWeekFileName():String {
-		return weeksList[PlayState.storyWeek];
+		return value;
 	}
 
 	//Used on LoadingState, nothing really too relevant
-	public static function getCurrentWeek():WeekData {
-		return weeksLoaded.get(weeksList[PlayState.storyWeek]);
-	}
-
-	public static function setDirectoryFromWeek(?data:WeekData = null) {
-		Paths.currentModDirectory = '';
-		if(data != null && data.folder != null && data.folder.length > 0) {
-			Paths.currentModDirectory = data.folder;
+	public static function getWeekDirectory():String {
+		var value:String = loadDirectory[PlayState.storyWeek];
+		if(value == null) {
+			value = "week" + getCurrentWeekNumber();
 		}
+		return value;
 	}
 }
