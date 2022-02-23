@@ -1,13 +1,6 @@
 package;
 
 import openfl.utils.Assets;
-import openfl.Assets;
-#if dontUseManifest
-import sys.io.File;
-import sys.FileSystem;
-#else
-import openfl.utils.Assets;
-#end
 import haxe.Json;
 import haxe.format.JsonParser;
 import Song;
@@ -66,18 +59,9 @@ class StageData {
 		var rawJson:String = null;
 		var path:String = Paths.getPreloadPath('stages/' + stage + '.json');
 
-		#if !android
-		var modPath:String = Paths.modFolders('stages/' + stage + '.json');
-		if(FileSystem.exists(modPath)) {
-			rawJson = Assets.getText(modPath);
-		} else if(FileSystem.exists(path)) {
-			rawJson = Assets.getText(path);
-		}
-		#else
 		if(Assets.exists(path)) {
 			rawJson = Assets.getText(path);
 		}
-		#end
 		else
 		{
 			return null;
