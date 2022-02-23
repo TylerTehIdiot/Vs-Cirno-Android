@@ -27,9 +27,6 @@ import flash.net.FileFilter;
 import haxe.Json;
 import DialogueBoxPsych;
 import lime.system.Clipboard;
-#if sys
-import sys.io.File;
-#end
 
 using StringTools;
 
@@ -98,6 +95,10 @@ class DialogueEditorState extends MusicBeatState
 		animText.scrollFactor.set();
 		add(animText);
 		changeText();
+
+		#if mobileC
+		addVirtualPad(NONE, A);
+		#end
 		super.create();
 	}
 
@@ -125,7 +126,7 @@ class DialogueEditorState extends MusicBeatState
 		tab_group.name = "Dialogue Line";
 
 		characterInputText = new FlxUIInputText(10, 20, 80, DialogueCharacter.DEFAULT_CHARACTER, 8);
-		characterInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;
+		characterInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;		
 		blockPressWhileTypingOn.push(characterInputText);
 
 		speedStepper = new FlxUINumericStepper(10, characterInputText.y + 40, 0.005, 0.05, 0, 0.5, 3);
@@ -138,7 +139,7 @@ class DialogueEditorState extends MusicBeatState
 		};
 		
 		lineInputText = new FlxUIInputText(10, speedStepper.y + 45, 200, DEFAULT_TEXT, 8);
-		lineInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;
+		lineInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;		
 		blockPressWhileTypingOn.push(lineInputText);
 
 		var loadButton:FlxButton = new FlxButton(20, lineInputText.y + 30, "Load Dialogue", function() {
@@ -337,13 +338,7 @@ class DialogueEditorState extends MusicBeatState
 			if(FlxG.keys.justPressed.SPACE) {
 				reloadText(speedStepper.value);
 			}
-			#if android
-			var androidback = FlxG.android.justReleased.BACK;
-			#else
-			var androidback = false;
-			#end
-
-			if(FlxG.keys.justPressed.ESCAPE || androidback) {
+			if(FlxG.keys.justPressed.ESCAPE #if mobileC || _virtualpad.buttonA.justPressed #end) {
 				MusicBeatState.switchState(new editors.MasterEditorMenu());
 				FlxG.sound.playMusic(Paths.music('freakyMenu'), 1);
 				transitioning = true;
@@ -458,30 +453,7 @@ class DialogueEditorState extends MusicBeatState
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 
-		#if dontUseManifest
-		var fullPath:String = null;
-		var jsonLoaded = cast Json.parse(Json.stringify(_file)); //Exploit(???) for accessing a private variable
-		if(jsonLoaded.__path != null) fullPath = jsonLoaded.__path; //I'm either a genious or dangerously dumb
-
-		if(fullPath != null) {
-			var rawJson:String = File.getContent(fullPath);
-			if(rawJson != null) {
-				var loadedDialog:DialogueFile = cast Json.parse(rawJson);
-				if(loadedDialog.dialogue != null && loadedDialog.dialogue.length > 0) //Make sure it's really a dialogue file
-				{
-					var cutName:String = _file.name.substr(0, _file.name.length - 5);
-					trace("Successfully loaded file: " + cutName);
-					dialogueFile = loadedDialog;
-					changeText();
-					_file = null;
-					return;
-				}
-			}
-		}
-		_file = null;
-		#else
 		trace("File couldn't be loaded! You aren't on Desktop, are you?");
-		#end
 	}
 
 	/**

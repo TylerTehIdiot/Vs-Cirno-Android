@@ -29,9 +29,6 @@ import DialogueBoxPsych;
 import flixel.FlxCamera;
 import flixel.group.FlxSpriteGroup;
 import lime.system.Clipboard;
-#if sys
-import sys.io.File;
-#end
 
 using StringTools;
 
@@ -65,8 +62,6 @@ class DialogueCharacterEditorState extends MusicBeatState
 
 	var mainGroup:FlxSpriteGroup;
 	var hudGroup:FlxSpriteGroup;
-
-	var key_space:FlxButton;
 
 	var character:DialogueCharacter;
 	var ghostLoop:DialogueCharacter;
@@ -148,11 +143,10 @@ class DialogueCharacterEditorState extends MusicBeatState
 		addEditorBox();
 		FlxG.mouse.visible = true;
 		updateCharTypeBox();
-		
-		key_space = new FlxButton(60, 60, "");
-        key_space.loadGraphic(Paths.image("key_space")); //"assets/images/key_space.png"
-        key_space.alpha = 0.75;
-        add(key_space);
+
+		#if mobileC
+		addVirtualPad(NONE, A);
+		#end
 		
 		super.create();
 	}
@@ -359,8 +353,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 		tab_group.name = "Character";
 
 		imageInputText = new FlxUIInputText(10, 30, 80, character.jsonFile.image, 8);
-		imageInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;
-		blockPressWhileTypingOn.push(imageInputText);
+		imageInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;		blockPressWhileTypingOn.push(imageInputText);
 		xStepper = new FlxUINumericStepper(imageInputText.x, imageInputText.y + 50, 10, character.jsonFile.position[0], -2000, 2000, 0);
 		yStepper = new FlxUINumericStepper(imageInputText.x + 80, xStepper.y, 10, character.jsonFile.position[1], -2000, 2000, 0);
 		scaleStepper = new FlxUINumericStepper(imageInputText.x, xStepper.y + 50, 0.05, character.jsonFile.scale, 0.1, 10, 2);
@@ -529,7 +522,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 			FlxG.sound.muteKeys = TitleState.muteKeys;
 			FlxG.sound.volumeDownKeys = TitleState.volumeDownKeys;
 			FlxG.sound.volumeUpKeys = TitleState.volumeUpKeys;
-			if(FlxG.keys.justPressed.SPACE || key_space.justPressed && UI_mainbox.selected_tab_id == 'Character') {
+			if(FlxG.keys.justPressed.SPACE && UI_mainbox.selected_tab_id == 'Character') {
 				character.playAnim();
 				updateTextBox();
 				reloadText();
@@ -643,13 +636,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 				currentGhosts = 0;
 			}
 
-			#if android
-			var androidback = FlxG.android.justReleased.BACK;
-			#else
-			var androidback = false;
-			#end
-
-			if(FlxG.keys.justPressed.ESCAPE || androidback) {
+			if(FlxG.keys.justPressed.ESCAPE #if mobileC || _virtualpad.buttonA.justPressed #end) {
 				MusicBeatState.switchState(new editors.MasterEditorMenu());
 				FlxG.sound.playMusic(Paths.music('freakyMenu'), 1);
 				transitioning = true;
@@ -679,38 +666,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 
-		#if dontUseManifest
-		var fullPath:String = null;
-		var jsonLoaded = cast Json.parse(Json.stringify(_file)); //Exploit(???) for accessing a private variable
-		if(jsonLoaded.__path != null) fullPath = jsonLoaded.__path; //I'm either a genious or dangerously dumb
-
-		if(fullPath != null) {
-			var rawJson:String = File.getContent(fullPath);
-			if(rawJson != null) {
-				var loadedChar:DialogueCharacterFile = cast Json.parse(rawJson);
-				if(loadedChar.dialogue_pos != null) //Make sure it's really a dialogue character
-				{
-					var cutName:String = _file.name.substr(0, _file.name.length - 5);
-					trace("Successfully loaded file: " + cutName);
-					character.jsonFile = loadedChar;
-					reloadCharacter();
-					reloadAnimationsDropDown();
-					updateCharTypeBox();
-					updateTextBox();
-					reloadText();
-					imageInputText.text = character.jsonFile.image;
-					scaleStepper.value = character.jsonFile.scale;
-					xStepper.value = character.jsonFile.position[0];
-					yStepper.value = character.jsonFile.position[1];
-					_file = null;
-					return;
-				}
-			}
-		}
-		_file = null;
-		#else
 		trace("File couldn't be loaded! You aren't on Desktop, are you?");
-		#end
 	}
 
 	/**

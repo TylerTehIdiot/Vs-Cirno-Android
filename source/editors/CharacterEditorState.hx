@@ -32,12 +32,7 @@ import Character;
 import flixel.system.debug.interaction.tools.Pointer.GraphicCursorCross;
 import lime.system.Clipboard;
 import flixel.animation.FlxAnimation;
-
-#if dontUseManifest
-import sys.FileSystem;
-#end
-
-import ui.FlxVirtualPad;
+import flixel.FlxCamera;
 
 using StringTools;
 
@@ -46,8 +41,6 @@ using StringTools;
  */
 class CharacterEditorState extends MusicBeatState
 {
-	var _pad:FlxVirtualPad;
-
 	var char:Character;
 	var ghostChar:Character;
 	var textAnim:FlxText;
@@ -201,9 +194,14 @@ class CharacterEditorState extends MusicBeatState
 		FlxG.mouse.visible = true;
 		reloadCharacterOptions();
 
-		_pad = new FlxVirtualPad(FULL, NONE);
-    	_pad.alpha = 0.75;
-    	this.add(_pad);
+	    #if mobileC
+		addVirtualPad(FULL, A_B_X_Y);
+
+		var camcontrol = new FlxCamera();
+		FlxG.cameras.add(camcontrol);
+		camcontrol.bgColor.alpha = 0;
+		_virtualpad.cameras = [camcontrol];
+		#end
 
 		super.create();
 	}
@@ -399,7 +397,7 @@ class CharacterEditorState extends MusicBeatState
 		tab_group.name = "Character";
 
 		imageInputText = new FlxUIInputText(15, 30, 200, 'characters/BOYFRIEND', 8);
-		imageInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;
+		imageInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;				
 		var reloadImage:FlxButton = new FlxButton(imageInputText.x + 210, imageInputText.y - 3, "Reload Image", function()
 		{
 			char.imageFile = imageInputText.text;
@@ -410,7 +408,7 @@ class CharacterEditorState extends MusicBeatState
 		});
 
 		healthIconInputText = new FlxUIInputText(15, imageInputText.y + 35, 75, leHealthIcon.getCharacter(), 8);
-		healthIconInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;
+		healthIconInputText.focusGained = () -> FlxG.stage.window.textInputEnabled = true;		
 
 		singDurationStepper = new FlxUINumericStepper(15, healthIconInputText.y + 45, 0.1, 4, 0, 999, 1);
 
@@ -910,28 +908,7 @@ class CharacterEditorState extends MusicBeatState
 
 	function reloadCharacterDropDown() {
 		var charsLoaded:Map<String, Bool> = new Map();
-
-		#if dontUseManifest
-		characterList = [];
-		var directories:Array<String> = [Paths.mods('characters/'), Paths.mods(Paths.currentModDirectory + '/characters/'), Paths.getPreloadPath('characters/')];
-		for (i in 0...directories.length) {
-			var directory:String = directories[i];
-			if(FileSystem.exists(directory)) {
-				for (file in FileSystem.readDirectory(directory)) {
-					var path = haxe.io.Path.join([directory, file]);
-					if (!sys.FileSystem.isDirectory(path) && file.endsWith('.json')) {
-						var charToCheck:String = file.substr(0, file.length - 5);
-						if(!charsLoaded.exists(charToCheck)) {
-							characterList.push(charToCheck);
-							charsLoaded.set(charToCheck, true);
-						}
-					}
-				}
-			}
-		}
-		#else
 		characterList = CoolUtil.coolTextFile(Paths.txt('characterList'));
-		#end
 
 		charDropDown.setData(FlxUIDropDownMenuCustom.makeStrIdLabelArray(characterList, true));
 		charDropDown.selectedLabel = daAnim;
@@ -987,13 +964,7 @@ class CharacterEditorState extends MusicBeatState
 		FlxG.sound.volumeUpKeys = TitleState.volumeUpKeys;
 
 		if(!charDropDown.dropPanel.visible) {
-			#if android
-			var androidback = FlxG.android.justReleased.BACK;
-			#else
-			var androidback = false;
-			#end
-
-			if (FlxG.keys.justPressed.ESCAPE || androidback) {
+			if (FlxG.keys.justPressed.ESCAPE #if mobileC || _virtualpad.buttonB.justPressed #end) {
 				if(goToPlayState) {
 					MusicBeatState.switchState(new PlayState());
 				} else {
@@ -1035,12 +1006,12 @@ class CharacterEditorState extends MusicBeatState
 			}
 
 			if(char.animationsArray.length > 0) {
-				if (FlxG.keys.justPressed.W || _pad.buttonUp.justPressed)
+				if (FlxG.keys.justPressed.W #if mobileC || _virtualpad.buttonX.justPressed #end)
 				{
 					curAnim -= 1;
 				}
 
-				if (FlxG.keys.justPressed.S || _pad.buttonDown.justPressed)
+				if (FlxG.keys.justPressed.S #if mobileC || _virtualpad.buttonY.justPressed #end)
 				{
 					curAnim += 1;
 				}
@@ -1051,13 +1022,13 @@ class CharacterEditorState extends MusicBeatState
 				if (curAnim >= char.animationsArray.length)
 					curAnim = 0;
 
-				if (FlxG.keys.justPressed.S || FlxG.keys.justPressed.W || FlxG.keys.justPressed.SPACE || _pad.buttonDown.justPressed || _pad.buttonUp.justPressed)
+				if (FlxG.keys.justPressed.S || FlxG.keys.justPressed.W || FlxG.keys.justPressed.SPACE #if mobileC || _virtualpad.buttonA.justPressed #end)
 				{
 					char.playAnim(char.animationsArray[curAnim].anim, true);
 					genBoyOffsets();
 				}
 
-				var controlArray:Array<Bool> = [FlxG.keys.justPressed.LEFT, FlxG.keys.justPressed.RIGHT, FlxG.keys.justPressed.UP, FlxG.keys.justPressed.DOWN, _pad.buttonRight.justPressed, _pad.buttonLeft.justPressed, _pad.buttonUp.justPressed, _pad.buttonDown.justPressed];
+				var controlArray:Array<Bool> = [FlxG.keys.justPressed.LEFT, FlxG.keys.justPressed.RIGHT, FlxG.keys.justPressed.UP, FlxG.keys.justPressed.DOWN #if mobileC, _virtualpad.buttonRight.justPressed, _virtualpad.buttonLeft.justPressed, _virtualpad.buttonUp.justPressed, _virtualpad.buttonDown.justPressed #end];
 				for (i in 0...controlArray.length) {
 					if(controlArray[i]) {
 						var holdShift = FlxG.keys.pressed.SHIFT;

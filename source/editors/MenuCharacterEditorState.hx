@@ -80,6 +80,10 @@ class MenuCharacterEditorState extends MusicBeatState
 		FlxG.mouse.visible = true;
 		updateCharTypeBox();
 
+		#if mobileC
+		addVirtualPad(NONE, A);
+		#end
+
 		super.create();
 	}
 
@@ -108,13 +112,6 @@ class MenuCharacterEditorState extends MusicBeatState
 		UI_mainbox.scrollFactor.set();
 		addCharacterUI();
 		add(UI_mainbox);
-
-		var loadButton:FlxButton = new FlxButton(0, 480, "Load Character", function() {
-			loadCharacter();
-		});
-		loadButton.screenCenter(X);
-		loadButton.x -= 60;
-		add(loadButton);
 	
 		var saveButton:FlxButton = new FlxButton(0, 480, "Save Character", function() {
 			saveCharacter();
@@ -281,13 +278,7 @@ class MenuCharacterEditorState extends MusicBeatState
 			FlxG.sound.muteKeys = TitleState.muteKeys;
 			FlxG.sound.volumeDownKeys = TitleState.volumeDownKeys;
 			FlxG.sound.volumeUpKeys = TitleState.volumeUpKeys;
-			#if android
-			var androidback = FlxG.android.justReleased.BACK;
-			#else
-			var androidback = false;
-			#end
-
-			if (FlxG.keys.justPressed.ESCAPE #if mobileC || androidback #end) {
+			if(FlxG.keys.justPressed.ESCAPE #if mobileC || _virtualpad.buttonA.justPressed #end) {
 				FlxG.mouse.visible = false;
 				MusicBeatState.switchState(new editors.MasterEditorMenu());
 				FlxG.sound.playMusic(Paths.music('freakyMenu'));
@@ -333,14 +324,14 @@ class MenuCharacterEditorState extends MusicBeatState
 	}
 
 	var _file:FileReference = null;
-	function loadCharacter() {
-		var jsonFilter:FileFilter = new FileFilter('JSON', 'json');
-		_file = new FileReference();
-		_file.addEventListener(Event.SELECT, onLoadComplete);
-		_file.addEventListener(Event.CANCEL, onLoadCancel);
-		_file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
-		_file.browse([jsonFilter]);
-	}
+	//function loadCharacter() {
+		//var jsonFilter:FileFilter = new FileFilter('JSON', 'json');
+		//_file = new FileReference();
+		//_file.addEventListener(Event.SELECT, onLoadComplete);
+		//_file.addEventListener(Event.CANCEL, onLoadCancel);
+		//_file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
+		//_file.browse([jsonFilter]);
+	//}
 
 	function onLoadComplete(_):Void
 	{
@@ -348,35 +339,7 @@ class MenuCharacterEditorState extends MusicBeatState
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 
-		#if dontUseManifest
-		var fullPath:String = null;
-		var jsonLoaded = cast Json.parse(Json.stringify(_file)); //Exploit(???) for accessing a private variable
-		if(jsonLoaded.__path != null) fullPath = jsonLoaded.__path; //I'm either a genious or dangerously dumb
-
-		if(fullPath != null) {
-			var rawJson:String = File.getContent(fullPath);
-			if(rawJson != null) {
-				var loadedChar:MenuCharacterFile = cast Json.parse(rawJson);
-				if(loadedChar.idle_anim != null && loadedChar.confirm_anim != null) //Make sure it's really a character
-				{
-					var cutName:String = _file.name.substr(0, _file.name.length - 5);
-					trace("Successfully loaded file: " + cutName);
-					characterFile = loadedChar;
-					reloadSelectedCharacter();
-					imageInputText.text = characterFile.image;
-					idleInputText.text = characterFile.image;
-					confirmInputText.text = characterFile.image;
-					scaleStepper.value = characterFile.scale;
-					updateOffset();
-					_file = null;
-					return;
-				}
-			}
-		}
-		_file = null;
-		#else
 		trace("File couldn't be loaded! You aren't on Desktop, are you?");
-		#end
 	}
 
 	/**
@@ -405,6 +368,9 @@ class MenuCharacterEditorState extends MusicBeatState
 
 	function saveCharacter() {
 		var data:String = Json.stringify(characterFile, "\t");
+
+		openfl.system.System.setClipboard(data.trim());
+
 		if (data.length > 0)
 		{
 			var splittedImage:Array<String> = imageInputText.text.trim().split('_');

@@ -37,10 +37,7 @@ class MasterEditorMenu extends MusicBeatState
 		#end
 
 		var bg:FlxSprite = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
-		bg.setGraphicSize(Std.int(bg.width * 1.175));
-		bg.updateHitbox();
-		bg.screenCenter();
-		bg.antialiasing = ClientPrefs.globalAntialiasing;
+		bg.scrollFactor.set();
 		bg.color = 0xFF353535;
 		add(bg);
 
@@ -56,7 +53,11 @@ class MasterEditorMenu extends MusicBeatState
 		}
 
 		changeSelection();
+
+		#if mobileC
 		addVirtualPad(UP_DOWN, A_B);
+		#end
+
 		super.create();
 	}
 
